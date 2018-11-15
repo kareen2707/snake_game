@@ -201,3 +201,22 @@ update:
 	
 	ret
 ; END: update
+
+; BEGIN: move_snake
+
+move_snake:
+
+	ldw t0, HEAD_X(zero)
+	ldw t1, HEAD_Y(zero)
+	
+	slli t0, t0, 5			; 32x
+	slli t1, t1, 2			; 4y
+	add t3, t0, t1			; 32x + 4y
+	addi t3, t3, GSA		; Final head GSA address: GSA base address + 32x +4y
+
+	ldw t4, 0(t3)			; content of GSA_n bit
+	
+	call upX:
+
+upX 
+; END: move_snake
