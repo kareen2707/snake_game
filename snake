@@ -31,12 +31,12 @@ ret
 ;BEGIN: set_pixel
 set_pixel:
 
-addi a0, zero, 1		; this simulates the x input
-addi a1, zero, 8		; this simulates the y input
+addi a0, zero, 4		; this simulates the x input
+addi a1, zero, 1		; this simulates the y input
 
-add t1, zero, 1
-add t2, zero, 2
-add t3, zero, 3
+addi t1, zero, 1
+addi t2, zero, 2
+addi t3, zero, 3
 
 cmplti t0, a0, 4		; Compares the x value is less than 4
 bne zero, t0, led0		; if it is true that means we're in LED[0]
@@ -47,17 +47,125 @@ bne zero, t0, led2
 
 led0:
 
-beq t0, t1, low_eight
-ldw t4, LEDS(zero)
+ldw t4, LEDS(zero)		; Upload the current state of the LEDS[0]
 
-low_eight:
-addi 
+beq a0, zero, led0_0	; Compares: x=0
+beq a0, t1, led0_1		; Compares: x=1
+beq a0, t2, led0_2		; Compares: x=2
+beq a0, t3, led0_3		; Compares: x=3
+
+ret
+
+led0_0:					; We enter here if we want to modify bits[7:0]
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1 
+stw t4, LEDS(zero)
+ret
+
+led0_1:					; We enter here if we want to modify bits[15:8]
+addi a1, a1, 8			; We add 8 in order to select the second group of bits
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1 
+stw t4, LEDS(zero)
+ret
+
+led0_2:					; We enter here if we want to modify bits[23:16]
+addi a1, a1, 16			; We add 8 in order to select the third group of bits
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1
+stw t4, LEDS(zero)
+ret
+
+led0_3:					; We enter here if we want to modify bits[31:24]
+addi a1, a1, 24			; We add 8 in order to select the fourth group of bits
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1 
+stw t4, LEDS(zero)
+ret
+
+
 
 led1:
-ldw t1, LEDS+4(zero)
+
+ldw t4, LEDS+4(zero)	; Upload the current state of the LEDS[1]
+
+sub a0, a0, t1
+sub a0, a0, t3			; Substract a0-4 to have a value 0<x<4
+
+beq a0, zero, led1_0	; Compares: x=0
+beq a0, t1, led1_1		; Compares: x=1
+beq a0, t2, led1_2		; Compares: x=2
+beq a0, t3, led1_3		; Compares: x=3
+
+ret
+
+
+led1_0:					; We enter here if we want to modify bits[7:0]
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1 
+stw t4, LEDS+4(zero)
+ret
+
+led1_1:					; We enter here if we want to modify bits[15:8]
+addi a1, a1, 8			; We add 8 in order to select the second group of bits
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1 
+stw t4, LEDS+4(zero)
+ret
+
+led1_2:					; We enter here if we want to modify bits[23:16]
+addi a1, a1, 16			; We add 8 in order to select the third group of bits
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1
+stw t4, LEDS+4(zero)
+ret
+
+led1_3:					; We enter here if we want to modify bits[31:24]
+addi a1, a1, 24			; We add 8 in order to select the fourth group of bits
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1 
+stw t4, LEDS+4(zero)
+ret
+
+
 
 led2:
 ldw t1, LEDS+8(zero)
 
+sub a0, a0, t2
+sub a0, a0, t3
+sub a0, a0, t3			; Substract a0-8 to have a value 0<x<4
+
+beq a0, zero, led2_0	; Compares: x=0
+beq a0, t1, led2_1		; Compares: x=1
+beq a0, t2, led2_2		; Compares: x=2
+beq a0, t3, led2_3		; Compares: x=3
+
 ret 
- 
+
+led2_0:					; We enter here if we want to modify bits[7:0]
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1 
+stw t4, LEDS+8(zero)
+ret
+
+led2_1:					; We enter here if we want to modify bits[15:8]
+addi a1, a1, 8			; We add 8 in order to select the second group of bits
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1 
+stw t4, LEDS+8(zero)
+ret
+
+led2_2:					; We enter here if we want to modify bits[23:16]
+addi a1, a1, 16			; We add 8 in order to select the third group of bits
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1
+stw t4, LEDS+8(zero)
+ret
+
+led2_3:					; We enter here if we want to modify bits[31:24]
+addi a1, a1, 24			; We add 8 in order to select the fourth group of bits
+sll t1, t1, a1			; Shift left "y" times
+or t4, t4, t1 
+stw t4, LEDS+8(zero)
+ret
