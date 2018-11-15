@@ -169,3 +169,35 @@ sll t1, t1, a1			; Shift left "y" times
 or t4, t4, t1 
 stw t4, LEDS+8(zero)
 ret
+
+; BEGIN: get_input
+get_input:
+	
+	ldw t0, BUTTONS(zero)
+	ldw t1, BUTTONS+4(zero)
+
+	addi t5, t5, 31
+	bne t0, t5, update
+	
+	ret
+; END: get_input
+
+; BEGIN: update
+update:
+
+	ldw t2, HEAD_X(zero)
+	ldw t3, HEAD_Y(zero)
+	
+	slli t2, t2, 5			; 32x
+	slli t3, t3, 2			; 4y
+	add t4, t2, t3			; 32x + 4y
+	addi t4, t4, GSA		; Final head GSA address: GSA base address + 32x +4y
+	
+	andi t1, t1, 15			; ignore bit 5
+		
+	stw t1,  0(t4)			; update the content
+	and t1, t1, zero		; clear edge capture
+	stw t0, BUTTONS+4(zero)
+	
+	ret
+; END: update
