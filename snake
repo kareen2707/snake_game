@@ -202,21 +202,124 @@ update:
 	ret
 ; END: update
 
-; BEGIN: move_snake
-
+; BEGIN:move_snake
 move_snake:
-
-	ldw t0, HEAD_X(zero)
-	ldw t1, HEAD_Y(zero)
 	
-	slli t0, t0, 5			; 32x
-	slli t1, t1, 2			; 4y
-	add t3, t0, t1			; 32x + 4y
-	addi t3, t3, GSA		; Final head GSA address: GSA base address + 32x +4y
+	;----------------- HEAD Handling ---------------------
 
-	ldw t4, 0(t3)			; content of GSA_n bit
+	ldw t0, HEAD_X(zero)	; loading x cood of head
+	ldw t1, HEAD_Y(zero)	; loading y cood of head
 	
-	call upX:
+							; retreive GSA of head
+	
+	slli t2, t0, 5			; 32X
+	slli t3, t1, 2			; 4Y
 
-upX 
-; END: move_snake
+	add t4, t2, t3			; store 32X + 4Y
+	addi t5, t4, GSA		; t5 contains the GSA address of the head
+
+	ldw	t6, 0(t5)			; load in t6 the content of the head's GSA
+
+	call updateX			; updateX
+	call updateY			; updateY
+
+	; At this moment, t0 and t1 contain the new values for x and y respectively and t6 still holds the old GSA's content
+
+	stw t0, HEAD_X(zero)	; put the new X value in HEAD_X
+	stw t1, HEAD_Y(zero)	; put the new Y value in HEAD_Y
+
+	; Now we calculate the new head's GSA address
+ 
+	slli t2, t0, 5			; 32X
+	slli t3, t1, 2			; 4Y
+
+	add t4, t2, t3			; store 32X + 4Y
+	addi t5, t4, GSA		; t5 contains the GSA address of the new head
+	
+	stw t6, 0(t5)			; store  the old GSA content(t6) in the new GSA address(t5)
+
+
+
+	;----------------- TAIL Handling ---------------------
+
+
+	addi t2, zero, 1		; we store in t2 the value 1
+	beq a0, t2, endMoveSnake; if a0 = 1 then we directly return
+
+	ldw t0, TAIL_X(zero)	; loading x cood of tail
+	ldw t1, TAIL_Y(zero)	; loading y cood of tail
+
+							; retreive GSA of tail
+	
+	slli t2, t0, 5			; 32X
+	slli t3, t1, 2			; 4Y
+
+	add t4, t2, t3			; store 32X + 4Y
+	addi t5, t4, GSA		; t5 contains the GSA address of the tail
+
+	ldw	t6, 0(t5)			; load in t6 the content of the tail's GSA
+
+	call updateX			; updateX
+	call updateY			; updateY
+
+	; At this moment, t0 and t1 contain the new values for x and y respectively and t6 still holds the old GSA's content
+	; and t5 still holds the ol GSA content
+	
+	stw t0, TAIL_X(zero)		; put the new X value in HEAD_X
+	stw t1, TAIL_Y(zero)		; put the new Y value in HEAD_Y
+
+	; Now we calculate the new tail's GSA address
+ 
+	slli t2, t0, 5			; 32X
+	slli t3, t1, 2			; 4Y
+
+	add t4, t2, t3			; store 32X + 4Y
+	addi t7, t4, GSA		; t7 contains the GSA address of the new tail
+	
+	stw t6, 0(t7)			; store the old GSA content(t6) in the new GSA address(t7)
+	stw zero, 0(t5)				; store 0 ath the old GSA address t5 (i.e turn it off)
+
+endMoveSnake: ret
+
+
+
+	;---------------- Auxilliary functions ---------------------
+
+
+updateX:
+
+	addi t2, zero, 1		; stock in t2 the value 1
+	beq t6, t2, decX		; if head's GSA is 1, decrement X
+	addi t2, zero, 4		; stock in t2 the value 4
+	beq t6, t2, incX		; if head's GSA is 4, increment X
+ret
+
+decX:
+	addi t0, t0, -1			; decrement X value in t0 by 1
+ret
+
+incX:
+	addi t0, t0, 1			; increment X value in t0 by 1
+ret
+
+
+updateY:
+
+	addi t2, zero, 2		; stock in t2 the value 2
+	beq t6, t2, decY		; if head's GSA is 2, decrement Y
+	addi t2, zero, 3		; stock in t2 the value 3
+	beq t6, t2, incY		; if head's GSA is 3, increment Y
+ret	
+
+decY:
+	addi t1, t1, -1			; decrement Y value in t1 by 1
+ret
+
+incY:
+	addi t1, t1, 1			; increment Y value in t1 by 1
+ret
+
+
+; END:move_snake
+
+
