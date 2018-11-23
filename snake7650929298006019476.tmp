@@ -323,3 +323,139 @@ ret
 ; END:move_snake
 
 
+
+; BEGIN:draw_array
+draw_array:
+
+	;--------------------- Main loop ------------------------
+
+	addi sp, zero, LEDS 	; initialize the stack pointer
+	addi t0, zero, GSA		; initialize t0 as a counter to iterate through all GSAs
+	addi t1, zero, SEVEN_SEGS ; put in t1 the stop address 
+	
+; SEVEN_SEGS is the value at which we want to stop iterating through the GSAs, iterating is done by steps of size 4
+
+loop:
+	
+	
+	beq t0, t1, end_draw_array
+
+	ldw t2, 0(t0)			; load in t2 the currently examined GSA
+	
+	call draw				; call draw, which will compare and eventually set a pixel 
+	
+	addi t0, t0, 4			; increment t0, i.e progress through the GSAs
+	br loop					; keep looping
+
+end_draw_array: ret	
+
+
+	;---------------- Auxilliary functions ---------------------
+
+draw:
+	
+	beq t2, zero, endDraw	; if pixel should be turned off, terminate
+	
+; PUSH operation on stack
+	addi sp, sp, -4			; decrement stack pointer		
+	stw ra, 0(sp)			; store previous ra value in stack due to incoming nested call
+	
+	call cood
+
+	add a0, zero, t3		; put in a0 the newly found xCood in preparation of set pixel
+	add a1, zero, t4		; put in a0 the newly found xCood in preparation of set pixel	
+	
+	call set_pixel
+
+; POP operation on stack
+	ldw ra, 0(sp)			; load in ra the appropriate return address
+	addi sp, sp, 4			; increment stack pointer
+	
+endDraw: ret
+
+; function cood finds the values of x and y from the GSA address (in t0)
+cood:
+
+	addi t3, zero, 0		; t3 will contain x coordinate, initialize to 0
+	addi t4, zero, 0		; t4 will contain y coordinate, initialize to 0
+	addi t5, t0, 0			; t5 will contain the GSA address that we'll modify to find out x and y, preserving t0 
+	addi t6, zero, GSA		; t6 will be used to compare value to GSA (because it's not a register)
+
+; PUSH operation on stack
+	addi sp, sp, -4			; decrement stack pointer		
+	stw ra, 0(sp)			; store previous ra value in stack due to incoming nested call
+
+	call Xloop
+	call Yloop
+
+; POP operation on stack
+	ldw ra, 0(sp)			; load in ra the appropriate return address
+	addi sp, sp, 4			; increment stack pointer
+
+ret
+
+
+Xloop:
+	
+	blt t5, t6, adj_exitX	; if we've passed the GSA value, we have our xCood
+	addi t5, t5, -32		; decrement GSA by a step (size 32)
+	addi t3, t3, 1			; increment xCood
+	br Xloop				; keep looping	
+
+adj_exitX:
+
+	addi t3, t3, -1			; adjust xCood
+	addi t5, t5, 32			; adjust t5 for incoming Yloop
+	br endXloop				; terminate
+	
+
+endXloop: ret
+
+Yloop:
+	
+	blt t5, t6, adj_exitY	; if we've passed the GSA value, we have our xCood
+	addi t5, t5, -4			; decrement GSA by a step (size 4)
+	addi t4, t4, 1			; increment yCood
+	br Yloop				; keep looping	
+
+adj_exitY:
+
+	addi t4, t4, -1			; adjust yCood
+	br endYloop				; terminate
+	
+endYloop: ret
+; END:draw_array
+
+
+; BEGIN:create_food
+create_food:
+	
+	addi t0, zero, 1
+	stw t0, RANDOM_NUM(zero); we write at RANDOM_NUM to generate a number
+	ldw	t0, RANDOM_NUM(zero); the newly generated number is loaded in t0
+
+	andi t0, t0, 255		; uses a mask to keep only the lsb of the random number
+	
+; we verify that the number is postive and < 96
+
+	addi t1, zero, 96
+	blt t0, zero, create_food
+	bge t0, t1, create_food
+
+; up to here, our random number is valid, we'll check the GSA of the corresponding pixel to see if it is free
+
+	slli t0, t0, 2			; we adjust our number by factor x4 to then sum to GSA address start (hexa format)
+	ldw t1, GSA(t0)			; t1 now contains the GSA of our pixel
+
+	bne t1, zero, create_food; if the GSA is different from 0, it's not possible to put food there
+	
+	addi t1, zero, 5		; put value 5 (food) into t1
+	stw t1, GSA(t0)			; the new GSA becomes 5 for the corrresponding pixel
+	
+
+ret
+; END:create_food
+
+
+
+
