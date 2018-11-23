@@ -9,6 +9,80 @@
 .equ RANDOM_NUM, 0x2010 ; Random number generator address
 .equ BUTTONS, 0x2030 ; Button addresses
 
+font_data:
+.word 0xFC ; 0
+.word 0x60 ; 1
+.word 0xDA ; 2
+.word 0xF2 ; 3
+.word 0x66 ; 4
+.word 0xB6 ; 5
+.word 0xBE ; 6
+.word 0xE0 ; 7
+.word 0xFE ; 8
+.word 0xF6 ; 9
+
+
+main:
+	addi sp, zero, LEDS		; initializing stack pointer
+	stw zero, SCORE(zero)	; initializing the score
+	call clear_leds
+	stw zero, HEAD_X(zero)	; initializing the Head coordinates
+	stw zero, HEAD_Y(zero)
+	addi t0, zero, 4		; Move rightwards originally
+	stw t0, GSA(zero)
+	; Maybe we need to write smth in TAIL_X and TAIL_Y
+	call create_food		; Create the first random food
+
+main_loop:
+	call get_input
+	call wait
+	call hit_test
+	
+	addi t0, zero, 1		; Initializing t0
+	beq v0, zero, no_changes
+	beq v0, t0, food_hit
+	addi t0, t0, 1
+	beq v0, t0, finish_game
+
+no_changes: 
+	call move_snake
+	call draw_array 
+	call restart_game
+	beq v0, zero, main_loop	
+	br main
+
+food_hit: 					; If the snake hits some food then increment the score
+	call display_score
+	call create_food
+	call move_snake
+	call draw_array
+	call restart_game
+	beq v0, zero, main_loop	
+	br main
+
+finish_game:
+	call clear_leds
+	addi t0, zero, 1
+	br final_loop
+
+final_loop:
+	call restart_game
+	beq v0, t0, main
+	br final_loop
+		 
+
+wait:
+	addi t0, zero, 1		; Initialing the counter 
+	slli t0, t0, 31			
+
+wait_loop:
+	beq t0, zero, stop	
+	addi t0, t0, -1
+	br wait_loop
+
+stop: ret
+ret 	
+
 ; BEGIN:clear_leds
 clear_leds:
 
@@ -25,14 +99,14 @@ stw t1, LEDS+4(zero)	; Storing the results in LEDS[1]
 stw t2, LEDS+8(zero)	; Storing the results in LEDS[2]
 
 ret
-; END:clean_data
+; END:clear_leds
 
-
-;BEGIN: set_pixel
+; BEGIN:set_pixel
 set_pixel:
 
-addi a0, zero, 4		; this simulates the x input
-addi a1, zero, 1		; this simulates the y input
+;testing purposes lines
+;addi a0, zero, 4		; this simulates the x input
+;addi a1, zero, 1		; this simulates the y input
 
 addi t1, zero, 1
 addi t2, zero, 2
@@ -45,45 +119,20 @@ bne zero, t0, led1		; Compares the x value is less than 8
 cmplti t0, a0, 12		; otherwise we could be in LED[2]
 bne zero, t0, led2
 
+addi sp, sp, -4
+stw ra, 0(sp)
+
 led0:
 
 ldw t4, LEDS(zero)		; Upload the current state of the LEDS[0]
 
-beq a0, zero, led0_0	; Compares: x=0
-beq a0, t1, led0_1		; Compares: x=1
-beq a0, t2, led0_2		; Compares: x=2
-beq a0, t3, led0_3		; Compares: x=3
+beq a0, zero, ledx_0	; Compares: x=0
+beq a0, t1, ledx_1		; Compares: x=1
+beq a0, t2, ledx_2		; Compares: x=2
+beq a0, t3, ledx_3		; Compares: x=3
 
-ret
-
-led0_0:					; We enter here if we want to modify bits[7:0]
-sll t1, t1, a1			; Shift left "y" times
-or t4, t4, t1 
 stw t4, LEDS(zero)
 ret
-
-led0_1:					; We enter here if we want to modify bits[15:8]
-addi a1, a1, 8			; We add 8 in order to select the second group of bits
-sll t1, t1, a1			; Shift left "y" times
-or t4, t4, t1 
-stw t4, LEDS(zero)
-ret
-
-led0_2:					; We enter here if we want to modify bits[23:16]
-addi a1, a1, 16			; We add 8 in order to select the third group of bits
-sll t1, t1, a1			; Shift left "y" times
-or t4, t4, t1
-stw t4, LEDS(zero)
-ret
-
-led0_3:					; We enter here if we want to modify bits[31:24]
-addi a1, a1, 24			; We add 8 in order to select the fourth group of bits
-sll t1, t1, a1			; Shift left "y" times
-or t4, t4, t1 
-stw t4, LEDS(zero)
-ret
-
-
 
 led1:
 
@@ -92,42 +141,13 @@ ldw t4, LEDS+4(zero)	; Upload the current state of the LEDS[1]
 sub a0, a0, t1
 sub a0, a0, t3			; Substract a0-4 to have a value 0<x<4
 
-beq a0, zero, led1_0	; Compares: x=0
-beq a0, t1, led1_1		; Compares: x=1
-beq a0, t2, led1_2		; Compares: x=2
-beq a0, t3, led1_3		; Compares: x=3
+beq a0, zero, ledx_0	; Compares: x=0
+beq a0, t1, ledx_1		; Compares: x=1
+beq a0, t2, ledx_2		; Compares: x=2
+beq a0, t3, ledx_3		; Compares: x=3
 
-ret
-
-
-led1_0:					; We enter here if we want to modify bits[7:0]
-sll t1, t1, a1			; Shift left "y" times
-or t4, t4, t1 
 stw t4, LEDS+4(zero)
 ret
-
-led1_1:					; We enter here if we want to modify bits[15:8]
-addi a1, a1, 8			; We add 8 in order to select the second group of bits
-sll t1, t1, a1			; Shift left "y" times
-or t4, t4, t1 
-stw t4, LEDS+4(zero)
-ret
-
-led1_2:					; We enter here if we want to modify bits[23:16]
-addi a1, a1, 16			; We add 8 in order to select the third group of bits
-sll t1, t1, a1			; Shift left "y" times
-or t4, t4, t1
-stw t4, LEDS+4(zero)
-ret
-
-led1_3:					; We enter here if we want to modify bits[31:24]
-addi a1, a1, 24			; We add 8 in order to select the fourth group of bits
-sll t1, t1, a1			; Shift left "y" times
-or t4, t4, t1 
-stw t4, LEDS+4(zero)
-ret
-
-
 
 led2:
 ldw t1, LEDS+8(zero)
@@ -136,71 +156,118 @@ sub a0, a0, t2
 sub a0, a0, t3
 sub a0, a0, t3			; Substract a0-8 to have a value 0<x<4
 
-beq a0, zero, led2_0	; Compares: x=0
-beq a0, t1, led2_1		; Compares: x=1
-beq a0, t2, led2_2		; Compares: x=2
-beq a0, t3, led2_3		; Compares: x=3
+beq a0, zero, ledx_0	; Compares: x=0
+beq a0, t1, ledx_1		; Compares: x=1
+beq a0, t2, ledx_2		; Compares: x=2
+beq a0, t3, ledx_3		; Compares: x=3
 
+stw t1, LEDS+8(zero)
 ret 
 
-led2_0:					; We enter here if we want to modify bits[7:0]
+ledx_0:					; We enter here if we want to modify bits[7:0]
 sll t1, t1, a1			; Shift left "y" times
 or t4, t4, t1 
-stw t4, LEDS+8(zero)
 ret
 
-led2_1:					; We enter here if we want to modify bits[15:8]
+ledx_1:					; We enter here if we want to modify bits[15:8]
 addi a1, a1, 8			; We add 8 in order to select the second group of bits
 sll t1, t1, a1			; Shift left "y" times
 or t4, t4, t1 
-stw t4, LEDS+8(zero)
 ret
 
-led2_2:					; We enter here if we want to modify bits[23:16]
+ledx_2:					; We enter here if we want to modify bits[23:16]
 addi a1, a1, 16			; We add 8 in order to select the third group of bits
 sll t1, t1, a1			; Shift left "y" times
 or t4, t4, t1
-stw t4, LEDS+8(zero)
+
 ret
 
-led2_3:					; We enter here if we want to modify bits[31:24]
+ledx_3:					; We enter here if we want to modify bits[31:24]
 addi a1, a1, 24			; We add 8 in order to select the fourth group of bits
 sll t1, t1, a1			; Shift left "y" times
 or t4, t4, t1 
-stw t4, LEDS+8(zero)
 ret
 
-; BEGIN: get_input
+; END:set_pixel
+
+; BEGIN:get_input
 get_input:
-	
-	ldw t0, BUTTONS(zero)
-	ldw t1, BUTTONS+4(zero)
 
-	addi t5, t5, 31
-	bne t0, t5, update
-	
-	ret
-; END: get_input
+	ldw t0, BUTTONS(zero) 	; t0 has status
+	ldw t1, BUTTONS+4(zero)	; t1 has edgecapture
 
-; BEGIN: update
-update:
+	addi t5, zero, 31
+	beq t0, t5, exit_getInp	; if no button is pressed, stop the function 
 
-	ldw t2, HEAD_X(zero)
-	ldw t3, HEAD_Y(zero)
+
+; if status isn't only ones, it means a button has been pressed, we will then put edgacture as the head's new GSA
+
+	ldw t2, HEAD_X(zero)	; t2 has x cood
+	ldw t3, HEAD_Y(zero)	; t3 has y cood
+
+	slli t2, t2, 5			; x32
+	slli t3, t3, 2			; x4
+	add t4, t2, t3			; 32*X + 4*Y
+	addi t4, t4, GSA		; Final head GSA address
+	ldw t7, 0(t4)			; t7 holds the content of the head's GSA
+
+	andi t1, t1, 15			; ignore bit 5, t1 has edgecapture without the reset info
+
+; now we try to see which button was pressed
 	
-	slli t2, t2, 5			; 32x
-	slli t3, t3, 2			; 4y
-	add t4, t2, t3			; 32x + 4y
-	addi t4, t4, GSA		; Final head GSA address: GSA base address + 32x +4y
+	addi t6, zero, 0		; will serve as counter
+	addi t6, zero, 1		; t6 = 1 
+	beq t1, t6, GSALeft		; put 1 into the GSA
 	
-	andi t1, t1, 15			; ignore bit 5
-		
-	stw t1,  0(t4)			; update the content
-	and t1, t1, zero		; clear edge capture
-	stw t0, BUTTONS+4(zero)
-	
-	ret
-; END: update
+	addi t6, zero, 2
+	beq t1, t6, GSAUp		; put 2 into the GSA
+
+	addi t6, zero, 4		
+	beq t1, t6, GSADown		; put 3 into the GSA
+
+	addi t6, zero, 8
+	beq t1, t6, GSARight 	; put 4 into the GSA
+
+
+GSALeft:
+	addi t6, zero, 1		; the new GSA
+	addi t2, zero, 4		; the value associated with going rightwards
+	beq t7, t2, exit_getInp	; if we were currently going right, we can't go left
+	stw t6, 0(t4)
+	br clear
+
+GSAUp:
+	addi t6, zero, 2		; the new GSA
+	addi t2, zero, 3		; the value associated with going downwards
+	beq t7, t2, exit_getInp	; if we were currently going down, we can't go up
+	stw t6, 0(t4)
+	br clear
+
+GSADown:
+	addi t6, zero, 3		; the new GSA
+	addi t2, zero, 2		; the value associated with going upwards
+	beq t7, t2, exit_getInp	; if we were currently going right, we can't go left
+	stw t6, 0(t4)
+	br clear
+
+GSARight:
+	addi t6, zero, 4		; the new GSA
+	addi t2, zero, 1		; the value associated with going leftwards
+	beq t7, t2, exit_getInp	; if we were currently going right, we can't go left
+	stw t6, 0(t4)
+	br clear
+
+clear:
+	stw zero, BUTTONS+4(zero)	; clear edgecapture
+ret
+
+
+exit_getInp: ret
+; END:get_input
+
+
+
+
 
 ; BEGIN:move_snake
 move_snake:
@@ -220,8 +287,16 @@ move_snake:
 
 	ldw	t6, 0(t5)			; load in t6 the content of the head's GSA
 
+	; PUSH operation on stack
+	addi sp, sp, -4			; decrement stack pointer		
+	stw ra, 0(sp)			; store previous ra value in stack due to incoming nested call
+
 	call updateX			; updateX
 	call updateY			; updateY
+
+	; POP operation on stack
+	ldw ra, 0(sp)			; load in ra the appropriate return address
+	addi sp, sp, 4			; increment stack pointer
 
 	; At this moment, t0 and t1 contain the new values for x and y respectively and t6 still holds the old GSA's content
 
@@ -265,8 +340,8 @@ move_snake:
 	; At this moment, t0 and t1 contain the new values for x and y respectively and t6 still holds the old GSA's content
 	; and t5 still holds the ol GSA content
 	
-	stw t0, TAIL_X(zero)		; put the new X value in HEAD_X
-	stw t1, TAIL_Y(zero)		; put the new Y value in HEAD_Y
+	stw t0, TAIL_X(zero)	; put the new X value in HEAD_X
+	stw t1, TAIL_Y(zero)	; put the new Y value in HEAD_Y
 
 	; Now we calculate the new tail's GSA address
  
@@ -277,7 +352,7 @@ move_snake:
 	addi t7, t4, GSA		; t7 contains the GSA address of the new tail
 	
 	stw t6, 0(t7)			; store the old GSA content(t6) in the new GSA address(t7)
-	stw zero, 0(t5)				; store 0 ath the old GSA address t5 (i.e turn it off)
+	stw zero, 0(t5)			; store 0 ath the old GSA address t5 (i.e turn it off)
 
 endMoveSnake: ret
 
@@ -324,12 +399,17 @@ ret
 
 
 
+
+
+
+
+
+
 ; BEGIN:draw_array
 draw_array:
 
 	;--------------------- Main loop ------------------------
 
-	addi sp, zero, LEDS 	; initialize the stack pointer
 	addi t0, zero, GSA		; initialize t0 as a counter to iterate through all GSAs
 	addi t1, zero, SEVEN_SEGS ; put in t1 the stop address 
 	
@@ -427,3 +507,439 @@ endYloop: ret
 ; END:draw_array
 
 
+
+; BEGIN:create_food
+create_food:
+	
+	addi t0, zero, 1
+	stw t0, RANDOM_NUM(zero); we write at RANDOM_NUM to generate a number
+	ldw	t0, RANDOM_NUM(zero); the newly generated number is loaded in t0
+
+	andi t0, t0, 255		; uses a mask to keep only the lsb of the random number
+	
+; we verify that the number is postive and < 96
+
+	addi t1, zero, 96
+	blt t0, zero, create_food
+	bge t0, t1, create_food
+
+; up to here, our random number is valid, we'll check the GSA of the corresponding pixel to see if it is free
+
+	slli t0, t0, 2			; we adjust our number by factor x4 to then sum to GSA address start (hexa format)
+	ldw t1, GSA(t0)			; t1 now contains the GSA of our pixel
+
+	bne t1, zero, create_food; if the GSA is different from 0, it's not possible to put food there
+	
+	addi t1, zero, 5		; put value 5 (food) into t1
+	stw t1, GSA(t0)			; the new GSA becomes 5 for the corrresponding pixel
+	
+
+ret
+; END:create_food
+
+
+; BEGIN:hit_test
+hit_test:
+
+; first we load the head coordinates, then we'll compute its GSA address
+
+	ldw t0, HEAD_X(zero)	; x cood
+	ldw t1, HEAD_Y(zero)	; y cood
+
+	slli t0, t0, 5			; 32X
+	slli t1, t1, 2			; 4Y
+
+	add t2, t0, t1			; store 32X + 4Y
+	addi t3, t2, GSA		; t2 contains the GSA address of the head
+
+	ldw t4, GSA(t3)			; load the head's GSA
+	
+; PUSH operation on stack
+	addi sp, sp, -4			; decrement stack pointer		
+	stw ra, 0(sp)			; store previous ra value in stack due to incoming nested call
+	
+	call Hupdate
+
+; POP operation on stack
+	ldw ra, 0(sp)			; load in ra the appropriate return address
+	addi sp, sp, 4			; increment stack pointer
+
+
+; t0 and t1 now contain the "coordinates" (format x4) of the block the snake is about to hit, let's retreive it's GSA
+
+	add t2, t0, t1			; store "32X + 4Y"
+	addi t3, t2, GSA		; t3 now contains the GSA address of the next block
+
+	ldw t4, GSA(t3)			; load the next block's GSA
+
+
+	addi t5, zero, 5		; load in t5 the value 5
+	beq t4, t5, foodHit		; CASE: food was hit (GSA = 5)
+	bne t4, zero, snakeHit	; CASE: snake was hit (0 < GSA < 5)
+	
+	blt t0, zero, boundHit	; CASE: left boundary was hit (X cood < 0)
+	
+	addi t5, zero, 11		; max X value in normal format
+	slli t5, t5, 5			; x32
+	addi t5, t5, 1			; minimum invalid value (command > doesn't exist)
+	bge t0, t5, boundHit	; CASE: right bound was hit (X cood > 11)
+	
+	blt t1, zero, boundHit	; CASE: upper bound was hit (Y cood < 0)
+
+	addi t5, zero, 7		; max Y value in normal format
+	slli t5, t5, 2			; x4
+	addi t5, t5, 1			; minimum invalid value (command > doesn't exist)
+	bge t1, t5, boundHit	; CASE: lower bound was hit (Y cood > 7)
+
+; if the program reaches this point it means the next block was neither food, snake or boundary, we return 0
+
+	addi v0, zero, 0
+
+ret
+
+
+
+; ----------------------- Auxiliary functions ---------------------------
+
+Hupdate:
+	br HupdateX
+
+HupdateX:
+
+	addi t5, zero, 1		; stock in t5 the value 1
+	beq t4, t2, HdecX		; if head's GSA is 1, decrement X
+	addi t5, zero, 4		; stock in t5 the value 4
+	beq t6, t2, HincX		; if head's GSA is 4, increment X
+	br HupdateY
+
+HdecX:
+	addi t0, t0, -32		; decrement X value in t0 by 32 (x is in x4 format)
+	br HupdateY
+
+HincX:
+	addi t0, t0, 32			; increment X value in t0 by 32 (x is in x4 format)
+	br HupdateY
+
+
+HupdateY:
+
+	addi t5, zero, 2		; stock in t5 the value 2
+	beq t6, t2, HdecY		; if head's GSA is 2, decrement Y
+	addi t5, zero, 3		; stock in t5 the value 3
+	beq t6, t2, HincY		; if head's GSA is 3, increment Y
+ret	
+
+HdecY:
+	addi t1, t1, -4			; decrement Y value in t1 by 1
+ret
+
+HincY:
+	addi t1, t1, 4			; increment Y value in t1 by 1
+ret
+
+
+foodHit:
+	addi v0, zero, 1		; store 1 in v0
+ret
+
+snakeHit:
+	addi v0, zero, 2		; store 2 in v0
+ret
+
+boundHit:
+	addi v0, zero, 2		; store 2 in v0
+ret
+; END:hit_test
+
+
+
+
+
+
+; BEGIN:display_score
+display_score:
+	
+; this method is called every time that food was hit
+	
+; updating score
+
+	ldw t0, SCORE(zero)		; we load the current score in t0
+	addi t0, t0, 1			; score is incremented
+	stw t0, SCORE(zero)		; score is stored after update
+
+	addi t1, zero, font_data+0		; load display value for 0 in t1
+	ldw t1, SEVEN_SEGS(zero); put into the first display slot
+	addi t2, zero, 4		; put 4 in t2
+	addi t2, t2, SEVEN_SEGS	; address of second display slot
+	ldw t1, 0(t2)			; put into the second display slot
+	
+
+; we now need to determine the 2 digits of the score
+
+	addi t3, zero, 0		; t3 will contain the futur decimal number
+	addi t4, zero, 0		; t4 will contain the futur unit number
+	addi t5, t0, 0 			; t5 will contain the updated score that we'll modify to find out t3 and t4, preserving t0
+	
+	; PUSH operation on stack
+	addi sp, sp, -4			; decrement stack pointer		
+	stw ra, 0(sp)			; store previous ra value in stack due to incoming nested call
+
+	call DEC_loop			; t3 now contains the proper decimal number
+	call UNI_loop			; t4 now contains the proper unit number
+
+	; POP operation on stack
+	ldw ra, 0(sp)			; load in ra the appropriate return address
+	addi sp, sp, 4			; increment stack pointer
+
+	
+; we now need to link the values of the decimal and unit to corresponding display words
+
+; first the decimal
+	
+	addi t5, zero, 0		; will serve as counter
+	beq t5, t3, disp0_DEC	; if =0, display 0
+	addi t5, t5, 1			; increment counter
+	beq t5, t3, disp1_DEC		; if =1, display 1
+	addi t5, t5, 1			; increment counter
+	beq t5, t3, disp2_DEC		; if =2, display 2
+	addi t5, t5, 1			; increment counter
+	beq t5, t3, disp3_DEC		; if =3, display 3
+	addi t5, t5, 1			; increment counter
+	beq t5, t3, disp4_DEC		; if =4, display 4
+	addi t5, t5, 1			; increment counter
+	beq t5, t3, disp5_DEC		; if =5, display 5
+	addi t5, t5, 1			; increment counter
+	beq t5, t3, disp6_DEC		; if =6, display 6
+	addi t5, t5, 1			; increment counter
+	beq t5, t3, disp7_DEC		; if =7, display 7
+	addi t5, t5, 1			; increment counter
+	beq t5, t3, disp8_DEC		; if =8, display 8
+	addi t5, t5, 1			; increment counter
+	beq t5, t3, disp9_DEC		; if =9, display 9
+
+
+disp0_DEC:	
+	addi t1, zero, font_data+0		; load display value for 0 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+disp1_DEC:	
+	addi t1, zero, font_data+4		; load display value for 1 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+disp2_DEC:	
+	addi t1, zero, font_data+8		; load display value for 2 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+disp3_DEC:	
+	addi t1, zero, font_data+12		; load display value for 3 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+disp4_DEC:	
+	addi t1, zero, font_data+16		; load display value for 4 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+disp5_DEC:	
+	addi t1, zero, font_data+20		; load display value for 5 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+disp6_DEC:	
+	addi t1, zero, font_data+24		; load display value for 6 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+disp7_DEC:	
+	addi t1, zero, font_data+28		; load display value for 7 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+disp8_DEC:	
+	addi t1, zero, font_data+32		; load display value for 8 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+disp9_DEC:	
+	addi t1, zero, font_data+36		; load display value for 9 in t1
+	addi t2, zero, 8		; put 8 in t2
+	addi t2, t2, SEVEN_SEGS	; address of third display slot
+	ldw t1, 0(t2)			; put into the third display slot
+br UNI_display				; handle the UNI
+
+
+; then the unit
+
+UNI_display:
+	
+	addi t5, zero, 0		; will serve as counter
+	beq t5, t4, disp0_UNI	; if =0, display 0
+	addi t5, t5, 1			; increment counter
+	beq t5, t4, disp1_UNI		; if =1, display 1
+	addi t5, t5, 1			; increment counter
+	beq t5, t4, disp2_UNI		; if =2, display 2
+	addi t5, t5, 1			; increment counter
+	beq t5, t4, disp3_UNI		; if =3, display 3
+	addi t5, t5, 1			; increment counter
+	beq t5, t4, disp4_UNI		; if =4, display 4
+	addi t5, t5, 1			; increment counter
+	beq t5, t4, disp5_UNI		; if =5, display 5
+	addi t5, t5, 1			; increment counter
+	beq t5, t4, disp6_UNI		; if =6, display 6
+	addi t5, t5, 1			; increment counter
+	beq t5, t4, disp7_UNI		; if =7, display 7
+	addi t5, t5, 1			; increment counter
+	beq t5, t4, disp8_UNI		; if =8, display 8
+	addi t5, t5, 1			; increment counter
+	beq t5, t4, disp9_UNI		; if =9, display 9
+	
+	
+disp0_UNI:	
+	addi t1, zero, font_data+0		; load display value for 0 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+disp1_UNI:	
+	addi t1, zero, font_data+4		; load display value for 1 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+disp2_UNI:	
+	addi t1, zero, font_data+8		; load display value for 2 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+disp3_UNI:	
+	addi t1, zero, font_data+12		; load display value for 3 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+disp4_UNI:	
+	addi t1, zero, font_data+16		; load display value for 4 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+disp5_UNI:	
+	addi t1, zero, font_data+20		; load display value for 5 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+disp6_UNI:	
+	addi t1, zero, font_data+24		; load display value for 6 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+disp7_UNI:	
+	addi t1, zero, font_data+28		; load display value for 7 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+disp8_UNI:	
+	addi t1, zero, font_data+32		; load display value for 8 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+disp9_UNI:	
+	addi t1, zero, font_data+36		; load display value for 9 in t1
+	addi t2, zero, 12		; put 12 in t2
+	addi t2, t2, SEVEN_SEGS	; address of fourth display slot
+	ldw t1, 0(t2)			; put into the fourth display slot
+ret
+
+ret
+
+; ------------------ Auxiliary functions -----------------------
+
+
+DEC_loop:
+	
+	blt t5, zero, adj_exit_DEC	; if we've passed 0, we have our decimal number
+	addi t5, t5, -10		; decrement score by a step (size 10)
+	addi t3, t3, 1			; increment DEC
+	br DEC_loop				; keep looping	
+
+adj_exit_DEC:
+
+	addi t3, t3, -1			; adjust DEC
+	addi t5, t5, 10			; adjust t5 for incoming UNI_loop
+	br endDECloop			; terminate
+	
+
+endDECloop: ret
+
+
+UNI_loop:
+	
+	blt t5, zero, adj_exit_UNI	; if we've passed 0, we have our unit number
+	addi t5, t5, -1			; decrement score by a step (size 1)
+	addi t4, t4, 1			; increment UNI
+	br UNI_loop				; keep looping	
+
+adj_exit_UNI:
+
+	addi t4, t4, -1			; adjust UNI
+	br endUNIloop			; terminate
+	
+endUNIloop: ret
+
+
+; END:display_score
+
+
+
+
+
+; BEGIN:restart_game
+restart_game:
+	ldw t1, BUTTONS+4(zero)	; t1 has edgecapture
+	addi t0, zero, 16		; value of 0b10000
+	beq t1, t0, positive	; reset was pressed
+	br negative
+
+positive:
+	addi v0, zero, 1		; output is 1
+ret
+
+negative:
+	addi v0, zero, 0 
+ret
+; END:restart_game
